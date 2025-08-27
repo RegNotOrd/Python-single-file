@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Vello — Tower of Hanoi (PyScript)</title>
 
-  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
-  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+  <!-- Use the official PyScript core distribution on jsDelivr -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@pyscript/core/dist/core.css" />
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@pyscript/core/dist/core.js"></script>
 
   <style>
     body { margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#071226; color:#e6eef8; display:flex; align-items:center; justify-content:center; min-height:100vh; }
@@ -39,7 +40,7 @@
     <canvas id="gameCanvas" width="840" height="420"></canvas>
   </div>
 
-  <!-- game logic (PyScript) -->
+  <!-- load your external game.py (must be in repo root) -->
   <py-script src="game.py"></py-script>
 </body>
 </html>
