@@ -1,4 +1,4 @@
-// game.js - JavaScript version of the Tower of Hanoi
+// game.js - JavaScript version of the Tower of Hanoi with corrected visualization
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -27,7 +27,6 @@ let dragging = null;
 let move_count = 0;
 let isSolving = false;
 
-// Helper to compute peg positions
 function compute_pegs() {
   const spacing = CANVAS_W / (peg_count + 1);
   peg_x = Array.from({
@@ -35,7 +34,6 @@ function compute_pegs() {
   }, (_, i) => (i + 1) * spacing);
 }
 
-// Drawing
 function clear() {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
@@ -43,35 +41,30 @@ function clear() {
 
 function draw() {
   clear();
-  // draw pegs
   ctx.fillStyle = "#111";
   for (const x of peg_x) {
     ctx.fillRect(x - peg_width / 2, CANVAS_H - peg_height, peg_width, peg_height);
   }
-  // draw disks
   for (let pi = 0; pi < pegs.length; pi++) {
     const peg = pegs[pi];
     for (let depth = 0; depth < peg.length; depth++) {
       const d = peg[depth];
       const x = d.x;
-      const y = d.y;
       const w = d.width;
       const h = disk_height - 2;
       ctx.fillStyle = "#87cefa";
-      // This is the correct drawing position for the disk
+      // This is the correct drawing position for the disk. It draws from the bottom up.
+      const y = CANVAS_H - (peg.length - depth) * disk_height;
       ctx.fillRect(x - w / 2, y - h, w, h);
-      // rim
       ctx.strokeStyle = "#0b3a66";
       ctx.strokeRect(x - w / 2, y - h, w, h);
     }
   }
-  // draw overlay instructions
   ctx.fillStyle = "#23324a";
   ctx.font = "12px sans-serif";
   ctx.fillText("Drag the top disk of any peg. Click 'Auto Solve' to auto-run.", 10, 18);
 }
 
-// Build disks on peg 0 (bottom-up)
 function layout_disks(n) {
   pegs = Array.from({
     length: peg_count
@@ -97,7 +90,6 @@ function update_disk_positions(peg_index) {
   for (let idx = 0; idx < pegs[peg_index].length; idx++) {
     const d = pegs[peg_index][idx];
     const stack_height = pegs[peg_index].length;
-    // Corrected y-position calculation
     const y = CANVAS_H - (stack_height - idx) * disk_height;
     d.y = y;
     d.x = peg_x[peg_index];
@@ -115,9 +107,9 @@ function get_top_disk_at_pos(x, y) {
     const w = top.width;
     const left = top.x - w / 2;
     const right = top.x + w / 2;
-    // Corrected y-position check for collision
-    const top_y = top.y - disk_height;
-    const bottom_y = top.y;
+    // Corrected y-position check for collision from bottom
+    const top_y = CANVAS_H - (peg.length) * disk_height;
+    const bottom_y = top_y + disk_height;
     if (x >= left - threshold && x <= right + threshold && y >= top_y && y <= bottom_y + threshold) {
       return [pi, top];
     }
@@ -125,12 +117,10 @@ function get_top_disk_at_pos(x, y) {
   return [null, null];
 }
 
-// Move label update
 function update_move_label(count) {
   moveLabel.innerText = `Moves: ${count}`;
 }
 
-// Mouse handlers
 function on_mousedown(evt) {
   if (isSolving) return;
   const rect = canvas.getBoundingClientRect();
@@ -210,7 +200,6 @@ function on_mouseup(evt) {
   dragging = null;
 }
 
-// Async move + animation for auto-solver
 async function move_disk_animated(source, target) {
   if (pegs[source].length === 0) {
     return;
@@ -247,7 +236,6 @@ async function solve_hanoi_async(n, source, target, aux) {
   }
 }
 
-// Start / Auto-solve handlers
 function start_game() {
   const n = parseInt(diskInput.value);
   if (isNaN(n) || n < 1 || n > 10) {
@@ -273,7 +261,6 @@ async function auto_solve_handler() {
   isSolving = false;
 }
 
-// Set up event listeners
 canvas.addEventListener("mousedown", on_mousedown);
 canvas.addEventListener("mousemove", on_mousemove);
 window.addEventListener("mouseup", on_mouseup);
@@ -281,6 +268,5 @@ window.addEventListener("mouseup", on_mouseup);
 startBtn.addEventListener("click", start_game);
 autoBtn.addEventListener("click", auto_solve_handler);
 
-// Initial layout
 compute_pegs();
 layout_disks(3);
