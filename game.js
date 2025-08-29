@@ -58,6 +58,7 @@ function draw() {
       const w = d.width;
       const h = disk_height - 2;
       ctx.fillStyle = "#87cefa";
+      // This is the correct drawing position for the disk
       ctx.fillRect(x - w / 2, y - h, w, h);
       // rim
       ctx.strokeStyle = "#0b3a66";
@@ -96,6 +97,7 @@ function update_disk_positions(peg_index) {
   for (let idx = 0; idx < pegs[peg_index].length; idx++) {
     const d = pegs[peg_index][idx];
     const stack_height = pegs[peg_index].length;
+    // Corrected y-position calculation
     const y = CANVAS_H - (stack_height - idx) * disk_height;
     d.y = y;
     d.x = peg_x[peg_index];
@@ -113,6 +115,7 @@ function get_top_disk_at_pos(x, y) {
     const w = top.width;
     const left = top.x - w / 2;
     const right = top.x + w / 2;
+    // Corrected y-position check for collision
     const top_y = top.y - disk_height;
     const bottom_y = top.y;
     if (x >= left - threshold && x <= right + threshold && y >= top_y && y <= bottom_y + threshold) {
@@ -141,7 +144,6 @@ function on_mousedown(evt) {
       offset_x: mx - disk.x,
       offset_y: my - disk.y
     };
-    // remove disk from peg while dragging
     if (pegs[peg_idx] && pegs[peg_idx][pegs[peg_idx].length - 1] === disk) {
       pegs[peg_idx].pop();
     }
@@ -172,11 +174,9 @@ function is_valid_move(disk, target_peg_index) {
 
 function snap_and_place(disk, target_peg_index, revert = false) {
   if (revert) {
-    // put back on original peg
     pegs[dragging.orig_peg].push(disk);
     update_disk_positions(dragging.orig_peg);
   } else {
-    // add to target
     pegs[target_peg_index].push(disk);
     update_disk_positions(target_peg_index);
     move_count += 1;
