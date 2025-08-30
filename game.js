@@ -1,283 +1,209 @@
-// game.js - JavaScript version of the Tower of Hanoi
+class TowerOfHanoi {
+  constructor(canvas, moveLabel) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.moveLabel = moveLabel;
+
+    this.canvasWidth = canvas.width;
+    this.canvasHeight = canvas.height;
+    this.pegCount = 3;
+    this.pegWidth = 10;
+    this.pegHeight = 200;
+    this.diskHeight = 20;
+    this.diskMinWidth = 40;
+    this.diskMaxWidth = 160;
+
+    this.pegs = [];
+    this.diskItems = new Map();
+    this.pegXPositions = [];
+    this.selectedDisk = null;
+    this.selectedPegIndex = null;
+    this.moveCount = 0;
+
+    // event bindings
+    this.canvas.addEventListener("mousedown", e => this.onMouseDown(e));
+    this.canvas.addEventListener("mousemove", e => this.onMouseMove(e));
+    this.canvas.addEventListener("mouseup", e => this.onMouseUp(e));
+  }
+
+  startGame(n) {
+    if (n < 1 || n > 10) {
+      alert("Please enter a number between 1 and 10");
+      return;
+    }
+    this.pegs = Array.from({length: this.pegCount}, () => []);
+    this.diskItems.clear();
+    this.selectedDisk = null;
+    this.selectedPegIndex = null;
+    this.moveCount = 0;
+    this.updateMoveLabel();
+
+    this.pegXPositions = [];
+    const spacing = this.canvasWidth / (this.pegCount + 1);
+    for (let i = 0; i < this.pegCount; i++) {
+      this.pegXPositions.push((i + 1) * spacing);
+    }
+
+    // create disks on first peg
+    const step = (this.diskMaxWidth - this.diskMinWidth) / Math.max(1, n - 1);
+    for (let i = n - 1; i >= 0; i--) {
+      const width = this.diskMinWidth + i * step;
+      const disk = {size: i, width, x: 0, y: 0, dragging: false};
+      this.pegs[0].push(disk);
+      this.diskItems.set(disk, disk);
+      this.snapDiskToPeg(disk, 0);
+    }
+
+    this.redraw();
+  }
+
+  updateMoveLabel() {
+    this.moveLabel.textContent = `Moves: ${this.moveCount}`;
+  }
+
+  redraw() {
+    this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+
+    // draw pegs
+    for (let i = 0; i < this.pegCount; i++) {
+      const x = this.pegXPositions[i];
+      this.ctx.fillStyle = "black";
+      this.ctx.fillRect(x - this.pegWidth/2, this.canvasHeight - this.pegHeight, this.pegWidth, this.pegHeight);
+    }
+
+    // draw disks
+    for (let i = 0; i < this.pegCount; i++) {
+      for (let j = 0; j < this.pegs[i].length; j++) {
+        const disk = this.pegs[i][j];
+        this.ctx.fillStyle = "skyblue";
+        this.ctx.fillRect(disk.x - disk.width/2, disk.y - this.diskHeight, disk.width, this.diskHeight);
+        this.ctx.strokeStyle = "black";
+        this.ctx.strokeRect(disk.x - disk.width/2, disk.y - this.diskHeight, disk.width, this.diskHeight);
+      }
+    }
+  }
+
+  getPegIndexAt(x) {
+    for (let i = 0; i < this.pegXPositions.length; i++) {
+      if (Math.abs(x - this.pegXPositions[i]) < 50) return i;
+    }
+    return null;
+  }
+
+  snapDiskToPeg(disk, pegIndex) {
+    const peg = this.pegs[pegIndex];
+    const x = this.pegXPositions[pegIndex];
+    const y = this.canvasHeight - peg.length * this.diskHeight;
+    disk.x = x;
+    disk.y = y;
+  }
+
+  validateMove(disk, targetPeg) {
+    const peg = this.pegs[targetPeg];
+    if (peg.length === 0) return true;
+    const topDisk = peg[peg.length - 1];
+    return disk.size < topDisk.size;
+  }
+
+  onMouseDown(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    // find top disk under cursor
+    for (let i = 0; i < this.pegs.length; i++) {
+      const peg = this.pegs[i];
+      if (peg.length === 0) continue;
+      const disk = peg[peg.length - 1];
+      if (mx >= disk.x - disk.width/2 && mx <= disk.x + disk.width/2 &&
+          my >= disk.y - this.diskHeight && my <= disk.y) {
+        this.selectedDisk = disk;
+        this.selectedPegIndex = i;
+        disk.dragging = true;
+        break;
+      }
+    }
+  }
+
+  onMouseMove(e) {
+    if (this.selectedDisk && this.selectedDisk.dragging) {
+      const rect = this.canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      this.selectedDisk.x = mx;
+      this.selectedDisk.y = my;
+      this.redraw();
+      this.ctx.fillStyle = "rgba(0,0,0,0.2)";
+      this.ctx.fillRect(0,0,this.canvasWidth,this.canvasHeight);
+      // redraw dragged disk
+      this.ctx.fillStyle = "orange";
+      this.ctx.fillRect(this.selectedDisk.x - this.selectedDisk.width/2,
+                        this.selectedDisk.y - this.diskHeight,
+                        this.selectedDisk.width, this.diskHeight);
+    }
+  }
+
+  onMouseUp(e) {
+    if (this.selectedDisk && this.selectedDisk.dragging) {
+      const rect = this.canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const targetPeg = this.getPegIndexAt(mx);
+      if (targetPeg !== null && this.validateMove(this.selectedDisk, targetPeg)) {
+        this.pegs[this.selectedPegIndex].pop();
+        this.pegs[targetPeg].push(this.selectedDisk);
+        this.moveCount++;
+        this.updateMoveLabel();
+        if (this.checkWin()) {
+          setTimeout(() => alert(`You solved the puzzle in ${this.moveCount} moves!`), 100);
+        }
+      }
+      this.selectedDisk.dragging = false;
+      this.snapDiskToPeg(this.selectedDisk, targetPeg !== null ? targetPeg : this.selectedPegIndex);
+      this.selectedDisk = null;
+      this.selectedPegIndex = null;
+      this.redraw();
+    }
+  }
+
+  checkWin() {
+    return this.pegs[0].length === 0 && this.pegs[2].length > 0 &&
+           this.pegs[2].every((d, i, arr) => i === 0 || arr[i-1].size < d.size);
+  }
+
+  moveDisk(source, target) {
+    const disk = this.pegs[source].pop();
+    this.pegs[target].push(disk);
+    this.moveCount++;
+    this.updateMoveLabel();
+    this.snapDiskToPeg(disk, target);
+    this.redraw();
+  }
+
+  async solveHanoi(n, source, target, auxiliary) {
+    if (n === 1) {
+      this.moveDisk(source, target);
+      await new Promise(r => setTimeout(r, 500));
+    } else {
+      await this.solveHanoi(n-1, source, auxiliary, target);
+      this.moveDisk(source, target);
+      await new Promise(r => setTimeout(r, 500));
+      await this.solveHanoi(n-1, auxiliary, target, source);
+    }
+  }
+
+  async autoSolve() {
+    const n = this.pegs[0].length;
+    await this.solveHanoi(n, 0, 2, 1);
+    alert(`Tower solved by auto-solver in ${this.moveCount} moves!`);
+  }
+}
+
+// setup
 const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-const CANVAS_W = parseInt(canvas.width);
-const CANVAS_H = parseInt(canvas.height);
-
-const diskInput = document.getElementById("diskCount");
-const startBtn = document.getElementById("startBtn");
-const autoBtn = document.getElementById("autoBtn");
 const moveLabel = document.getElementById("moveLabel");
+const hanoi = new TowerOfHanoi(canvas, moveLabel);
 
-const peg_count = 3;
-const peg_width = 10;
-const peg_height = 240;
-const disk_height = 22;
-const disk_min_width = 60;
-const disk_max_width = 240;
-
-let peg_x = [];
-let pegs = [
-  [],
-  [],
-  []
-];
-let dragging = null;
-let move_count = 0;
-let isSolving = false;
-
-// Helper to compute peg positions
-function compute_pegs() {
-  const spacing = CANVAS_W / (peg_count + 1);
-  peg_x = Array.from({
-    length: peg_count
-  }, (_, i) => (i + 1) * spacing);
-}
-
-// Drawing
-function clear() {
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-}
-
-function draw() {
-  clear();
-  // draw pegs
-  ctx.fillStyle = "#111";
-  for (const x of peg_x) {
-    ctx.fillRect(x - peg_width / 2, CANVAS_H - peg_height, peg_width, peg_height);
-  }
-  // draw disks
-  for (let pi = 0; pi < pegs.length; pi++) {
-    const peg = pegs[pi];
-    for (let depth = 0; depth < peg.length; depth++) {
-      const d = peg[depth];
-      const x = d.x;
-      const y = d.y;
-      const w = d.width;
-      const h = disk_height - 2;
-      ctx.fillStyle = "#87cefa";
-      ctx.fillRect(x - w / 2, y - h, w, h);
-      // rim
-      ctx.strokeStyle = "#0b3a66";
-      ctx.strokeRect(x - w / 2, y - h, w, h);
-    }
-  }
-  // draw overlay instructions
-  ctx.fillStyle = "#23324a";
-  ctx.font = "12px sans-serif";
-  ctx.fillText("Drag the top disk of any peg. Click 'Auto Solve' to auto-run.", 10, 18);
-}
-
-// Build disks on peg 0 (bottom-up)
-function layout_disks(n) {
-  pegs = Array.from({
-    length: peg_count
-  }, () => []);
-  const spacing = n <= 1 ? 1 : (disk_max_width - disk_min_width) / Math.max(1, (n - 1));
-  for (let i = n - 1; i >= 0; i--) {
-    const width = parseInt(disk_min_width + i * spacing);
-    const x = peg_x[0];
-    const y = CANVAS_H - (n - i) * disk_height;
-    const disk = {
-      size: i,
-      width: width,
-      x: x,
-      y: y
-    };
-    pegs[0].push(disk);
-  }
-  update_move_label(0);
-  draw();
-}
-
-function update_disk_positions(peg_index) {
-  for (let idx = 0; idx < pegs[peg_index].length; idx++) {
-    const d = pegs[peg_index][idx];
-    const stack_height = pegs[peg_index].length;
-    // Corrected y-position: stack from bottom of the peg
-    d.y = CANVAS_H - (stack_height - idx - 1) * disk_height; 
-    d.x = peg_x[peg_index];
-  }
-}
-
-function get_top_disk_at_pos(x, y) {
-  const threshold = 30;
-  for (let pi = 0; pi < pegs.length; pi++) {
-    const peg = pegs[pi];
-    if (peg.length === 0) {
-      continue;
-    }
-    const top = peg[peg.length - 1];
-    const w = top.width;
-    const left = top.x - w / 2;
-    const right = top.x + w / 2;
-    const top_y = top.y - disk_height;
-    const bottom_y = top.y;
-    if (x >= left - threshold && x <= right + threshold && y >= top_y && y <= bottom_y + threshold) {
-      return [pi, top];
-    }
-  }
-  return [null, null];
-}
-
-// Move label update
-function update_move_label(count) {
-  moveLabel.innerText = `Moves: ${count}`;
-}
-
-// Mouse handlers
-function on_mousedown(evt) {
-  if (isSolving) return;
-  const rect = canvas.getBoundingClientRect();
-  const mx = evt.clientX - rect.left;
-  const my = evt.clientY - rect.top;
-  const [peg_idx, disk] = get_top_disk_at_pos(mx, my);
-  if (disk !== null) {
-    dragging = {
-      disk: disk,
-      orig_peg: peg_idx,
-      offset_x: mx - disk.x,
-      offset_y: my - disk.y
-    };
-    if (pegs[peg_idx] && pegs[peg_idx][pegs[peg_idx].length - 1] === disk) {
-      pegs[peg_idx].pop();
-    }
-    draw();
-  }
-}
-
-function on_mousemove(evt) {
-  if (!dragging) {
-    return;
-  }
-  const rect = canvas.getBoundingClientRect();
-  const mx = evt.clientX - rect.left;
-  const my = evt.clientY - rect.top;
-  const drag_disk = dragging.disk;
-  drag_disk.x = mx - dragging.offset_x;
-  drag_disk.y = my - dragging.offset_y;
-  draw();
-}
-
-function is_valid_move(disk, target_peg_index) {
-  if (pegs[target_peg_index].length === 0) {
-    return true;
-  }
-  const top = pegs[target_peg_index][pegs[target_peg_index].length - 1];
-  return disk.size < top.size;
-}
-
-function snap_and_place(disk, target_peg_index, revert = false) {
-  if (revert) {
-    pegs[dragging.orig_peg].push(disk);
-    update_disk_positions(dragging.orig_peg);
-  } else {
-    pegs[target_peg_index].push(disk);
-    update_disk_positions(target_peg_index);
-    move_count += 1;
-    update_move_label(move_count);
-    const n = parseInt(diskInput.value);
-    if (pegs[0].length === 0 && pegs[2].length === n) {
-      setTimeout(() => {
-        window.alert(`Congratulations! You solved the puzzle in ${move_count} moves!`);
-      }, 100);
-    }
-  }
-  draw();
-}
-
-function on_mouseup(evt) {
-  if (!dragging) {
-    return;
-  }
-  const rect = canvas.getBoundingClientRect();
-  const mx = evt.clientX - rect.left;
-  const my = evt.clientY - rect.top;
-  const closest = peg_x.reduce((prev, curr, i) => {
-    return Math.abs(mx - curr) < Math.abs(mx - peg_x[prev]) ? i : prev;
-  }, 0);
-  const disk = dragging.disk;
-  if (is_valid_move(disk, closest)) {
-    snap_and_place(disk, closest, false);
-  } else {
-    snap_and_place(disk, dragging.orig_peg, true);
-  }
-  dragging = null;
-}
-
-// Async move + animation for auto-solver
-async function move_disk_animated(source, target) {
-  if (pegs[source].length === 0) {
-    return;
-  }
-  const disk = pegs[source].pop();
-  const start_x = disk.x;
-  const target_x = peg_x[target];
-  const steps = 12;
-
-  for (let i = 0; i < steps; i++) {
-    disk.x = start_x + (target_x - start_x) * (i + 1) / steps;
-    draw();
-    await new Promise(resolve => setTimeout(resolve, 30));
-  }
-
-  pegs[target].push(disk);
-  update_disk_positions(target);
-  move_count += 1;
-  update_move_label(move_count);
-  draw();
-  await new Promise(resolve => setTimeout(resolve, 80));
-}
-
-async function solve_hanoi_async(n, source, target, aux) {
-  if (n === 0) {
-    return;
-  }
-  if (n === 1) {
-    await move_disk_animated(source, target);
-  } else {
-    await solve_hanoi_async(n - 1, source, aux, target);
-    await move_disk_animated(source, target);
-    await solve_hanoi_async(n - 1, aux, target, source);
-  }
-}
-
-// Start / Auto-solve handlers
-function start_game() {
-  const n = parseInt(diskInput.value);
-  if (isNaN(n) || n < 1 || n > 10) {
-    window.alert("Please enter a number between 1 and 10");
-    return;
-  }
-  dragging = null;
-  compute_pegs();
-  layout_disks(n);
-  move_count = 0;
-  update_move_label(move_count);
-}
-
-async function auto_solve_handler() {
-  const n = parseInt(diskInput.value);
-  if (isNaN(n) || n < 1 || n > 10) {
-    window.alert("Please enter a number between 1 and 10");
-    return;
-  }
-  isSolving = true;
-  await solve_hanoi_async(n, 0, 2, 1);
-  window.alert(`Tower solved by auto-solver in ${move_count} moves!`);
-  isSolving = false;
-}
-
-// Set up event listeners
-canvas.addEventListener("mousedown", on_mousedown);
-canvas.addEventListener("mousemove", on_mousemove);
-window.addEventListener("mouseup", on_mouseup);
-
-startBtn.addEventListener("click", start_game);
-autoBtn.addEventListener("click", auto_solve_handler);
-
-// Initial layout
-compute_pegs();
-layout_disks(3);
+document.getElementById("startBtn").addEventListener("click", () => {
+  const n = parseInt(document.getElementById("diskCount").value);
+  hanoi.startGame(n);
+});
+document.getElementById("autoBtn").addEventListener("click", () => hanoi.autoSolve());
